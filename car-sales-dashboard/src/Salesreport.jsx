@@ -6,8 +6,8 @@ import {
   CartesianGrid, Cell, LineChart, Line, Legend,
 } from 'recharts';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable'; // แก้ไขการ import ให้เป็นแบบนี้
-// import "./Sarabun-Regular-normal.js";
+import autoTable from 'jspdf-autotable';
+
 
 /* ─────────────────────────── constants ──────────────────────────────────── */
 
@@ -51,14 +51,16 @@ export default function SalesReport() {
   const [hideZero,   setHideZero]   = useState(true);
   const [activeTab,  setActiveTab]  = useState('table');
 
-  // ฟังก์ชันดึงข้อมูลจาก Database
+  // --- จุดปรับปรุงที่ 2: เปลี่ยน localhost เป็น IP ของ Ubuntu Server ---
+  const API_URL = "http://192.168.99.173:5000";
+
   const fetchDataFromDB = async () => {
     setLoading(true);
     try {
       const query = selectedBranch && selectedBranch !== '__all__'
         ? `?branch=${encodeURIComponent(selectedBranch)}`
         : '';
-      const res = await axios.get(`http://localhost:5000/api/sales${query}`); 
+      const res = await axios.get(`${API_URL}/api/sales${query}`); 
       const raw = res.data.map(item => ({
         brand: item.car_brand || item.brand || 'UNKNOWN',
         count: parseInt(item.sales_count || item.count) || 0,
@@ -74,21 +76,20 @@ export default function SalesReport() {
     }
   };
 
-  const [branches, setBranches] = useState([]); // เก็บรายชื่อจังหวัดทั้งหมด
-  const [selectedBranch, setSelectedBranch] = useState('__all__'); // จังหวัดที่เลือกอยู่
+  const [branches, setBranches] = useState([]); 
+  const [selectedBranch, setSelectedBranch] = useState('__all__'); 
 
-  // ฟังก์ชันดึงรายชื่อจังหวัด
   const fetchBranches = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/branches');
+      const res = await axios.get(`${API_URL}/api/branches`);
       setBranches(res.data);
     } catch (err) {
       console.error("ดึงรายชื่อจังหวัดไม่สำเร็จ", err);
     }
   };
 
-  useEffect(() => { fetchBranches(); }, []); // ดึงรายชื่อจังหวัดครั้งแรก
-  useEffect(() => { fetchDataFromDB(); }, [selectedBranch]); // เมื่อเปลี่ยนจังหวัด ให้ดึงข้อมูลใหม่
+  useEffect(() => { fetchBranches(); }, []); 
+  useEffect(() => { fetchDataFromDB(); }, [selectedBranch]); 
 
   const buildReportData = (raw) => {
     const byYear = {};
@@ -127,7 +128,6 @@ export default function SalesReport() {
 
   const yd = activeYear && reportData ? reportData.byYear[activeYear] : null;
 
-  /* ── เตรียมข้อมูลสำหรับกราฟ (Logic เพิ่มเติมที่ขาดไป) ── */
   const monthlyChartData = yd ? yd.monthTotals.map((total, i) => ({
     month: MONTHS_TH[i],
     total: total || 0
@@ -156,67 +156,64 @@ export default function SalesReport() {
     a.click();
   };
 
+  // --- จุดปรับปรุงที่ 3: แก้ไข Export PDF ให้รองรับภาษาไทย ---
   const exportPDF = () => {
-  if (!yd) return;
-  try {
-    // สร้างเอกสาร PDF แนวนอน
-    const doc = new jsPDF('l', 'mm', 'a4');
+    if (!yd) return;
+    try {
+      const doc = new jsPDF('l', 'mm', 'a4');
+      const fontName = "Sarabun"; 
+      
+      // เรียกใช้ addFont จากไฟล์ .js ที่ import มา
+      doc.addFont('Sarabun-normal.ttf', fontName, 'normal');
+      doc.setFont(fontName);
 
-    // แก้ไขเรื่องฟอนต์: 
-    // ตรวจสอบว่าในไฟล์ Sarabun-Regular-normal.js คุณใช้ชื่อฟอนต์ว่าอะไร 
-    // สมมติว่าชื่อ 'Sarabun' ตามที่คุณตั้งไว้
-    const fontName = "Sarabun"; 
-    
-    const title = `รายงานยอดจำหน่ายยานยนต์ ${selectedBranch === '__all__' ? 'ทุกจังหวัด' : 'จังหวัด ' + selectedBranch} ปี ${activeYear}`;
+      const title = `รายงานยอดจำหน่ายยานยนต์ ${selectedBranch === '__all__' ? 'ทุกจังหวัด' : 'จังหวัด ' + selectedBranch} ปี ${activeYear}`;
 
-    // เรียกใช้ autoTable แบบแก้ไขปัญหา function not found
-    autoTable(doc, {
-      html: '#sales-table',
-      startY: 20,
-      styles: {
-        font: fontName, // ใส่ชื่อฟอนต์ภาษาไทยที่ Register ไว้
-        fontSize: 10,
-        cellPadding: 3,
-        halign: 'center',
-        fontStyle: 'normal'
-      },
-      headStyles: {
-        fillColor: [0, 82, 165],
-        textColor: [255, 255, 255],
-        font: fontName,
-        fontStyle: 'normal' // สำหรับฟอนต์ไทยแนะนำให้ใช้ normal เพื่อลดปัญหาสระลอย/หาย
-      },
-      footStyles: {
-        fillColor: [26, 31, 46],
-        textColor: [255, 255, 255],
-        font: fontName
-      },
-      columnStyles: {
-        0: { halign: 'left', cellWidth: 40 }
-      },
-      didDrawPage: (data) => {
-        doc.setFont(fontName); // กำหนดฟอนต์ก่อนเขียน Text
-        doc.setFontSize(16);
-        doc.text(title, 14, 15);
-      },
-      didParseCell: (data) => {
-        // แก้ไขสัญลักษณ์ "—" ให้เป็น "0" ตามที่คุณต้องการ
-        if (data.cell.text[0] === '—' || data.cell.text[0] === '') {
-          data.cell.text[0] = '0';
-        }
-      },
-      theme: 'grid'
-    });
+      autoTable(doc, {
+        html: '#sales-table',
+        startY: 20,
+        styles: {
+          font: fontName, 
+          fontSize: 10,
+          cellPadding: 3,
+          halign: 'center',
+          fontStyle: 'normal'
+        },
+        headStyles: {
+          fillColor: [0, 82, 165],
+          textColor: [255, 255, 255],
+          font: fontName,
+          fontStyle: 'normal'
+        },
+        footStyles: {
+          fillColor: [26, 31, 46],
+          textColor: [255, 255, 255],
+          font: fontName
+        },
+        columnStyles: {
+          0: { halign: 'left', cellWidth: 40 }
+        },
+        didDrawPage: (data) => {
+          doc.setFont(fontName); 
+          doc.setFontSize(16);
+          doc.text(title, 14, 15);
+        },
+        didParseCell: (data) => {
+          if (data.cell.text[0] === '—' || data.cell.text[0] === '') {
+            data.cell.text[0] = '0';
+          }
+        },
+        theme: 'grid'
+      });
 
-    doc.save(`sales-report-${selectedBranch}-${activeYear}.pdf`);
-  } catch (err) {
-    console.error("PDF Export Error:", err);
-    // แจ้งเตือนข้อผิดพลาดที่เกิดขึ้นจริง
-    alert("Export PDF ไม่สำเร็จ: " + err.message);
-  }
-};
+      doc.save(`sales-report-${selectedBranch}-${activeYear}.pdf`);
+    } catch (err) {
+      console.error("PDF Export Error:", err);
+      alert("Export PDF ไม่สำเร็จ: " + err.message);
+    }
+  };
   
-  /* ── styles ── */
+  /* ── styles (เหมือนเดิมทุกประการ) ── */
   const S = {
     root:   { minHeight: '100vh', background: '#F2F6FC', fontFamily: "'Sarabun','Segoe UI',sans-serif", color: '#1A1F2E' },
     topbar: { background: '#fff', borderBottom: '1px solid rgba(0,82,165,.10)', padding: '0 32px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 20 },

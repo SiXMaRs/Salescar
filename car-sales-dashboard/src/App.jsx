@@ -40,6 +40,9 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
+  // --- จุดปรับปรุง: ตั้งค่า Endpoint ให้เป็น IP ของ Server ---
+  const API_URL = "http://192.168.99.173:5000";
+
   const handleFile = (f) => {
     if (!f) return;
     setFile(f);
@@ -52,7 +55,8 @@ function App() {
     formData.append('pdf', file);
     setLoading(true);
     try {
-      const res = await axios.post('http://localhost:5000/api/upload', formData);
+      // แก้ไขจาก localhost เป็น IP Server
+      const res = await axios.post(`${API_URL}/api/upload`, formData);
       const results = res.data.results.map(item => ({
         ...item,
         count: parseInt(item.count) || 0
@@ -95,7 +99,6 @@ function App() {
       maxWidth: '960px',
       margin: '0 auto',
     },
-    // Header
     header: {
       marginBottom: '28px',
     },
@@ -120,7 +123,6 @@ function App() {
       marginTop: '4px',
       fontWeight: 400,
     },
-    // Card
     card: {
       background: '#fff',
       borderRadius: '20px',
@@ -138,7 +140,6 @@ function App() {
       color: '#8A94A6',
       marginBottom: '14px',
     },
-    // Upload zone
     dropzone: (over) => ({
       border: `2px dashed ${over ? '#0052A5' : 'rgba(0,82,165,0.2)'}`,
       borderRadius: '16px',
@@ -180,7 +181,6 @@ function App() {
       fontWeight: 500,
       color: '#0052A5',
     },
-    // Button
     btn: (disabled) => ({
       width: '100%',
       marginTop: '14px',
@@ -199,12 +199,10 @@ function App() {
       transition: 'background 0.15s',
       boxShadow: disabled ? 'none' : '0 4px 16px rgba(0,82,165,0.25)',
     }),
-    // Divider
     divider: {
       borderTop: '1px solid rgba(0,82,165,0.08)',
       margin: '0',
     },
-    // Stats row
     statsRow: {
       display: 'grid',
       gridTemplateColumns: 'repeat(3, 1fr)',
@@ -234,11 +232,9 @@ function App() {
       color: '#8A94A6',
       marginTop: '2px',
     },
-    // Chart
     chartWrap: {
       padding: '24px 32px 8px',
     },
-    // Table
     tableWrap: {
       padding: '0 32px 28px',
     },
@@ -270,7 +266,6 @@ function App() {
       marginTop: '5px',
       overflow: 'hidden',
     },
-    // Total row
     totalRow: {
       background: '#1A1F2E',
     },
@@ -297,15 +292,12 @@ function App() {
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
       <div style={styles.wrap}>
-
-        {/* Header */}
         <div style={styles.header}>
           <p style={styles.eyebrow}>T.T.COM — Analytics</p>
           <h1 style={styles.title}>รายงานวิเคราะห์ยอดขาย</h1>
           <p style={styles.subtitle}>อัปโหลดไฟล์ PDF เพื่อให้ AI วิเคราะห์และสรุปข้อมูลรายยี่ห้อโดยอัตโนมัติ</p>
         </div>
 
-        {/* Upload card */}
         <div style={{ ...styles.card, marginBottom: '16px' }}>
           <div style={styles.cardPad}>
             <p style={styles.sectionLabel}>
@@ -313,7 +305,6 @@ function App() {
               อัปโหลดไฟล์
             </p>
 
-            {/* Dropzone */}
             <div
               style={styles.dropzone(dragOver)}
               onClick={() => document.getElementById('pdf-input').click()}
@@ -356,11 +347,8 @@ function App() {
           </div>
         </div>
 
-        {/* Results */}
         {rawData.length > 0 && (
           <div style={styles.card}>
-
-            {/* Stats row */}
             <div style={styles.statsRow}>
               <div style={styles.statCell(false)}>
                 <p style={styles.statLabel}>ยี่ห้อที่พบ</p>
@@ -381,7 +369,6 @@ function App() {
               </div>
             </div>
 
-            {/* Chart */}
             <div style={styles.chartWrap}>
               <p style={styles.sectionLabel}>
                 <i className="fa-solid fa-chart-bar" style={{ marginRight: '6px', color: '#0052A5' }}></i>
@@ -421,7 +408,6 @@ function App() {
 
             <div style={styles.divider}></div>
 
-            {/* Table */}
             <div style={styles.tableWrap}>
               <p style={{ ...styles.sectionLabel, paddingTop: '24px' }}>
                 <i className="fa-solid fa-table-list" style={{ marginRight: '6px', color: '#0052A5' }}></i>
@@ -496,7 +482,6 @@ function App() {
                 </tfoot>
               </table>
             </div>
-
           </div>
         )}
       </div>
